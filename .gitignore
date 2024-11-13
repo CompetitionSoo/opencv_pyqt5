@@ -1,0 +1,16 @@
+venv/
+sample/
+3.py
+detect-moving.py
+opencv.quiz.py
+sample.py
+test.py
+test2.py
+ex1.py
+
+
+## 폴더는 / 
+## 파일은 형식까지 
+## .gitignore 폴더는 품목안에있는 대상들은 (폴더,파일)제외한다는 의미라 생각하자
+
+
