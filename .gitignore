@@ -1,13 +1,9 @@
-venv/
+venv2/
 sample/
-3.py
-detect-moving.py
-opencv.quiz.py
+opencv.test.py
 sample.py
 test.py
-test2.py
-ex1.py
-opencv_pyqt5 copy.py
+opencv_test.py
 as.py
 ## 폴더는 / 
 ## 파일은 형식까지 

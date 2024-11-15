@@ -22,7 +22,7 @@ class App(QMainWindow):
     if not os.path.exists("images"):
             os.mkdir("images")
 
-    ip = '192.168.137.127'    
+    ip = '192.168.137.240'    
     def __init__(self):
         super().__init__()
         self.stream = urlopen('http://' + App.ip +':81/stream')
