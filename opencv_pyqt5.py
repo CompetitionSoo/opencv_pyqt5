@@ -8,13 +8,21 @@ import time
 from PyQt5.QtCore import Qt
 import random
 import cv2
+import os
 import numpy as np
 
 
 
 # PyQt5 화면 띄우기 (영상과 버튼 만드는 과정)
 class App(QMainWindow):
-    ip = '192.168.137.150'    
+    
+    # 현재 스크립트의 디렉토리로 작업 디렉토리를 변경
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))   
+    # images 폴더가 없으면 생성
+    if not os.path.exists("images"):
+            os.mkdir("images")
+
+    ip = '192.168.137.127'    
     def __init__(self):
         super().__init__()
         self.stream = urlopen('http://' + App.ip +':81/stream')
@@ -25,7 +33,9 @@ class App(QMainWindow):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_frame)  
         self.timer.start(1) 
-
+        
+        self.image_cnt = 0
+        self.cap = None  # 이미지 저장을 위한 변수
 
         # OpenCV 얼굴 인식 모델 로딩
         self.face = cv2.CascadeClassifier("models\haarcascade_frontalface_default.xml")
@@ -158,6 +168,13 @@ class App(QMainWindow):
         btn_line_drive.resize(100,50)
         btn_line_drive.clicked.connect(self.line_drive) # 라인 트레이싱 자율주행 시작
         
+        btn_Save = QPushButton("저장하기", self)
+        btn_Save.resize(100,50)
+        btn_Save.clicked.connect(self.save_image)
+
+        btn_Delete = QPushButton("삭제하기", self)
+        btn_Delete.resize(100,50)
+        btn_Delete.clicked.connect(self.delete_image)
 
         # 레이아웃 설정
         hbox1 = QHBoxLayout()  # 가로 방향 레이아웃
@@ -182,16 +199,20 @@ class App(QMainWindow):
             hbox3.addSpacing(15)
         hbox3.addStretch(2) 
 
-        hbox4 = QHBoxLayout()  # 가로 방향 레이아웃
+        hbox4 = QHBoxLayout()  
         hbox4.addStretch(2)
         hbox4.addWidget(btn_backward)
         hbox4.addStretch(2)
         
-        hbox5 = QHBoxLayout()  # 가로 방향 레이아웃
+        hbox5 = QHBoxLayout()  
         hbox5.addStretch(1)
         hbox5.addWidget(btn_harr)
-        hbox5.addStretch(6)
+        hbox5.addStretch(1)
         hbox5.addWidget(btn_line_drive)
+        hbox5.addStretch(3)
+        hbox5.addWidget(btn_Save)
+        hbox5.addStretch(1)
+        hbox5.addWidget(btn_Delete)
         hbox5.addStretch(1)
         
         vbox = QVBoxLayout(widget) # 세로 방향 레이아웃 
@@ -227,7 +248,7 @@ class App(QMainWindow):
                 self.buffer = self.buffer[end+2:]
                 img = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
                 img = cv2.flip(img, -1)  # 수평 및 수직 반전 ##
-                
+                self.captuer = img                
                 # Haar 얼굴 검출 인식기능
                 if self.face_active :
                     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -273,7 +294,7 @@ class App(QMainWindow):
                         print("직진")
                         urlopen("http://" + App.ip + "/action?go=forward")
                     
-                    cv2.imshow("mask", mask)  # 처리된 mask를 시각화
+                    # cv2.imshow("mask", mask)  # 처리된 mask를 시각화 화면을 보여줍니다.
 
                 # OpenCV의 BGR 이미지를 RGB로 변환
                 frame = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -340,8 +361,11 @@ class App(QMainWindow):
         elif event.key() == Qt.Key_M:  # 자유주행은  M 으로 지정하겠다
             self.line_drive()  # 자유주행기능 활성화/비활성화
         
+        elif event.key() == Qt.Key_I:  # 이미지 저장 키 (I)
+            self.save_image()
 
-
+        elif event.key() == Qt.Key_O:  # 이미지 삭제 키 (O)
+            self.delete_image()
             '''
             위에 동작이 키입력을 통하여 움직이는거 까지 확인을햿어
 
@@ -413,6 +437,42 @@ class App(QMainWindow):
         self.line_drive_active = not self.line_drive_active  # 자율주행 상태를 토글
         status = "자율주행 활성화중" if self.line_drive_active else "자율주행 비활성화중"
         print(f"Line drive {status}")  # 상태 출력
+
+# 이미지 저장과 최근이미지를 삭제하는 함수입니다.
+    def save_image(self):
+        print(f"이미지 저장: {self.image_cnt}")
+        if self.captuer is not None:  # 캡쳐된 이미지가 있다면 저장
+            cv2.imwrite(f"images/image_{self.image_cnt}.png", self.captuer)
+            self.image_cnt += 1  # 이미지가 저장될 때마다 카운트 증가
+        else:
+            print("저장할 이미지가 없습니다.")
+
+    def delete_image(self):
+        # 'images' 폴더 내에 있는 모든 파일을 가져옵니다.
+        image_folder = "images"
+        
+        # 이미지 파일들이 저장되어 있는 폴더가 존재하는지 확인
+        if not os.path.exists(image_folder):
+            print(f"'{image_folder}' 폴더가 존재하지 않습니다.")
+            return
+        
+        # 폴더 내의 모든 파일 리스트를 가져와서 이름순으로 정렬
+        files = [f for f in os.listdir(image_folder) if f.endswith('.png')]  # .png 파일만 필터링
+        if not files:
+            print("삭제할 이미지가 없습니다.")
+            return
+
+        # 파일 이름 기준으로 정렬 (가장 최근 파일을 먼저)
+        files.sort(key=lambda f: int(f.split('_')[1].split('.')[0]), reverse=True)
+
+        # 가장 최근에 저장된 이미지 파일을 삭제
+        recent_file = os.path.join(image_folder, files[0])
+        try:
+            os.remove(recent_file)
+            print(f"최근 이미지 {recent_file}을 삭제했습니다.")
+        except Exception as e:
+            print(f"이미지를 삭제하는 중 오류가 발생했습니다: {e}")
+
 
 if __name__ == '__main__':
     print(sys.argv)
